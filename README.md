@@ -7,4 +7,4 @@ Architecture:
   2. index processed tweets into ElasticSearch
   3. fetch tweets from ElasticSearch
 
-Front end triggering the fetching from ES based on a keyword
+Front end triggers the fetching from ES based on a keyword
