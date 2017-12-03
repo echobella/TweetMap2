@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script>
+    <link href='http://fonts.googleapis.com/css?family=Cookie' rel='stylesheet' type='text/css'>
+    <style>
+        /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+        
+        #map {
+            height: 77%;
+            width: 96.6%;
+            margin: 1%;
+        }
+        
+        #legend {
+            font-family: Arial, sans-serif;
+            font-size: 17px;
+            background: 0;
+            padding: 10px;
+            margin: 10px;
+            border: 3px solid #000;
+            margin-left: 10px
+            text-align: center;
+        }
+        
+        #legend h7 {
+            margin-top: 0;
+            text-align: center;
+        }
+
+        h7 {
+            margin-top: 0;
+            text-align: center;
+        }
+        
+        #legend img {
+            vertical-align: middle;
+        }
+        
+        .dropdown-toggle {
+            width: 150px !important;
+        }
+        /* Optional: Makes the sample page fill the window. */
+        
+        .toggl {
+          display: inline-block;
+          border: single;
+          color: blue;
+          text-align: center;
+          font-size: 14px;
+          padding: 4px;
+          width: 250px;
+          height: 35px;
+         
+          cursor: pointer;
+          margin: 5px;
+          background-color: white;
+          border-radius: 4px;
+
+        }
+
+
+
+        .button {
+          display: inline-block;
+          border-radius: 4px;
+          background-color: #EBD151;
+          border: single;
+          color: #FFFFFF;
+          text-align: center;
+          font-size: 14px;
+          padding: 4px;
+          width: 200px;
+          height: 35px;
+          transition: all 0.5s;
+          cursor: pointer;
+          margin: 5px;
+        }
+
+        .button span {
+          cursor: pointer;
+          display: inline-block;
+          position: relative;
+          transition: 0.5s;
+        }
+
+        .button span:after {
+          content: '\00bb';
+          position: absolute;
+          opacity: 0;
+          top: 0;
+          right: -20px;
+          transition: 0.5s;
+        }
+
+        .button:hover span {
+          padding-right: 25px;
+        }
+
+        .button:hover span:after {
+          opacity: 1;
+          right: 0;
+        }
+
+
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="text-center">
+        <h1><u>Tweet Sentiment Analysis</h1>
+    </div>
+    <div class="alert alert-danger" role="alert">
+        <strong>Oh snap !</strong> <a href="#" class="alert-link">Select any option</a> and try submitting again.
+    </div>
+
+    <div align="left" style="margin-top: 0px; margin-left: 10px;">
+        <div class="dropdown btn-group">
+            <button class="toggl" type="button" data-toggle="dropdown"><span id="selected">Select a keyword</span>
+                <span class="caret"></span></button>
+            <ul class="dropdown-menu dropdown-menu-center">
+
+                <li><a href="#">Love</a></li>
+                <li><a href="#">Hate</a></li>
+                <li><a href="#">Google</a></li>
+                <li><a href="#">Story</a></li>
+                <li><a href="#">Life</a></li>
+                <li><a href="#">Haha</a></li>
+                <li><a href="#">Work</a></li>
+                <li><a href="#">Why</a></li>
+                <li><a href="#">Universe</a></li>
+                <li><a href="#">Now</a></li>
+               
+
+            </ul>
+            <button id="search" type="submit" style="margin-top: 20px; margin-left: 18px;" class="button">Submit</button>
+        </div>
+    </div>
+    <div id="map"></div>
+    <div id="legend">
+        <h8>Color Scheme</h8></div>
+
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyADmg-Aoy3dCdD9pQv39pISAQN2ezHmD9g&callback=initMap">
+   
+
+    </script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+
+    <script>
+    $(".alert").hide();
+    var selectedText;
+    $('.dropdown-menu a').click(function(){
+    	selectedText=$(this).text();
+    $('#selected').text(selectedText);
+    });
+    var iconBase;
+    var icons;
+    $( document ).ready(function() {
+        iconBase = 'http://maps.google.com/mapfiles/ms/icons/';
+        icons = {
+          positive: {
+            name: 'Positive Sentiment',
+            icon: iconBase + 'green.png'
+          },
+          negative: {
+            name: 'Negative Sentiment',
+            icon: iconBase + 'red.png'
+          },
+          neutral: {
+            name: 'Neutral Sentiment',
+            icon: iconBase + 'blue.png'
+          }
+        };
+        var legend = document.getElementById('legend');
+        for (var key in icons) {
+          var type = icons[key];
+          var name = type.name;
+          var icon = type.icon;
+          var div = document.createElement('div');
+          div.innerHTML = '<img src="' + icon + '"> ' + name;
+          legend.appendChild(div);
+
+        }
+    });
+      var map;
+      var infowindow;
+      var markers = [];
+      function initMap() {
+        var styledMapType = new google.maps.StyledMapType(
+            [
+              {
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#ebe3cd"
+                  }
+                ]
+              },
+              {
+                elementType: "labels.text.fill",
+                stylers: [
+                  {
+                    color: "#523735"
+                  }
+                ]
+              },
+              {
+                elementType: "labels.text.stroke",
+                stylers: [
+                  {
+                    color: "#f5f1e6"
+                  }
+                ]
+              },
+              {
+                featureType: "administrative",
+                elementType: "geometry.stroke",
+                stylers: [
+                  {
+                    color: "#c9b2a6"
+                  }
+                ]
+              },
+              {
+                featureType: "administrative.land_parcel",
+                elementType: "geometry.stroke",
+                stylers: [
+                  {
+                    color: "#dcd2be"
+                  }
+                ]
+              },
+              {
+                featureType: "administrative.land_parcel",
+                elementType: "labels.text.fill",
+                stylers: [
+                  {
+                    color: "#ae9e90"
+                  }
+                ]
+              },
+              {
+                featureType: "landscape.natural",
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#dfd2ae"
+                  }
+                ]
+              },
+              {
+                featureType: "poi",
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#dfd2ae"
+                  }
+                ]
+              },
+              {
+                featureType: "poi",
+                elementType: "labels.text.fill",
+                stylers: [
+                  {
+                    color: "#93817c"
+                  }
+                ]
+              },
+              {
+                featureType: "poi.park",
+                elementType: "geometry.fill",
+                stylers: [
+                  {
+                    color: "#a5b076"
+                  }
+                ]
+              },
+              {
+                featureType: "poi.park",
+                elementType: "labels.text.fill",
+                stylers: [
+                  {
+                    color: "#447530"
+                  }
+                ]
+              },
+              {
+                featureType: "road",
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#f5f1e6"
+                  }
+                ]
+              },
+              {
+                featureType: "road.arterial",
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#fdfcf8"
+                  }
+                ]
+              },
+              {
+                featureType: "road.highway",
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#f8c967"
+                  }
+                ]
+              },
+              {
+                featureType: "road.highway",
+                elementType: "geometry.stroke",
+                stylers: [
+                  {
+                    color: "#e9bc62"
+                  }
+                ]
+              },
+              {
+                featureType: "road.highway.controlled_access",
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#e98d58"
+                  }
+                ]
+              },
+              {
+                featureType: "road.highway.controlled_access",
+                elementType: "geometry.stroke",
+                stylers: [
+                  {
+                    color: "#db8555"
+                  }
+                ]
+              },
+              {
+                featureType: "road.local",
+                elementType: "labels.text.fill",
+                stylers: [
+                  {
+                    color: "#806b63"
+                  }
+                ]
+              },
+              {
+                featureType: "transit.line",
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#dfd2ae"
+                  }
+                ]
+              },
+              {
+                featureType: "transit.line",
+                elementType: "labels.text.fill",
+                stylers: [
+                  {
+                    color: "#8f7d77"
+                  }
+                ]
+              },
+              {
+                featureType: "transit.line",
+                elementType: "labels.text.stroke",
+                stylers: [
+                  {
+                    color: "#ebe3cd"
+                  }
+                ]
+              },
+              {
+                featureType: "transit.station",
+                elementType: "geometry",
+                stylers: [
+                  {
+                    color: "#dfd2ae"
+                  }
+                ]
+              },
+              {
+                featureType: "water",
+                elementType: "geometry.fill",
+                stylers: [
+                  {
+                    color: "#8BABDC"
+                  }
+                ]
+              },
+              {
+                featureType: "water",
+                elementType: "labels.text.fill",
+                stylers: [
+                  {
+                    color: "#447530"
+                  }
+                ]
+              }
+            ],
+
+            {name: 'Styled Map'});
+            map = new google.maps.Map(document.getElementById('map'), {
+                zoom: 2,
+                center: new google.maps.LatLng(27.730610 ,4.935242),
+                mapTypeId: ['terrain', 'styled_map']
+            });
+        //Associate the styled map with the MapTypeId and set it to display.
+        map.mapTypes.set('styled_map', styledMapType);
+        map.setMapTypeId('styled_map');
+        map.controls[google.maps.ControlPosition.LEFT_BOTTOM].push(document.getElementById('legend'));
+        infowindow = new google.maps.InfoWindow({});
+      }
+      function getRandomInRange(from, to, fixed) {
+    return (Math.random() * (to - from) + from).toFixed(fixed) * 1;
+	   }
+     function deleteAllMarkers(){
+        for (var i = 0; i < markers.length; i++) {
+          markers[i].setMap(null);
+        }
+        markers=[];
+     }
+      function createTwittMarkerOnMap(tweet){
+      	var longitude = tweet.coords[0];
+      	var latitude= tweet.coords[1];
+      	var LatLng= {lat: latitude, lng: longitude};
+      	var user=tweet.name;
+      	var time= tweet.created;
+      	var text= tweet.text;
+        var label=tweet.label;
+      	var marker = new google.maps.Marker({
+                position: LatLng,
+                icon: icons[label].icon,
+                draggable: false,
+                animation: google.maps.Animation.DROP,
+                map: map
+        });
+        markers.push(marker);
+        var contentString='<div id="bodyContent">' + '<a href="https://twitter.com/' + user + '">' + '<b>' + user + '</b></a>: '
+                    + text + '</p>' +
+                    '<p><b>' + time + '</b></p>' +
+                    '</div>';
+        marker.addListener('click', function () {
+        	 if (infowindow)infowindow.close();
+        	    infowindow.setContent(contentString);
+                infowindow.open(map, marker);
+         });
+      }
+    </script>
+
+    <script>
+    var interval = null;
+    $('#search').click(function () {
+      clearInterval(interval);
+    	$(".alert").hide();
+    	//initMap();
+      deleteAllMarkers();
+      google.maps.event.trigger(map, 'resize');
+        var keyword = selectedText;
+        if(keyword==undefined){
+        	$(".alert").show();
+        	return;
+        }
+        var time = Math.round((new Date()).getTime() / 1000);
+        //var time = 150000;
+        var APIUrl="https://7pq1lqu1g1.execute-api.us-west-2.amazonaws.com/prod/twitter?keyword="+keyword+"&time=";
+        var url;
+      interval=setInterval(function(){
+        url=null;
+        url=APIUrl+time;
+
+        console.log(url);
+
+        $.ajax({
+          type: "GET",
+          url: url ,
+          success: function(newdata){
+            console.log(newdata);
+            var tweets = newdata.tweet;
+            if(tweets.length>0)time=Math.round((new Date()).getTime() / 1000);
+            for (var i = 0; i < tweets.length; i++) {
+            	if(tweets[i].coords!=undefined && tweets[i].coords!=null){
+            		createTwittMarkerOnMap(tweets[i]);
+            	}
+            }
+        }});
+      },10000);
+    });
+</script>
+
+  </body>
+</html>
